@@ -1,1 +1,0 @@
-# ECLAT-Algorithm
