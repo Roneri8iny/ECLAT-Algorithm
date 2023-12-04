@@ -129,7 +129,7 @@ def generate_association_rules(min_confidence):
                         strong_association_rules[ar_key] = confidence
     '''
 
-
+'''
 def generate_candidate_itemsets_l2(df_pruned):
     df_after_generation = pd.DataFrame()
     result_list = df_pruned.values.tolist()
@@ -154,7 +154,7 @@ def generate_candidate_itemsets_l2(df_pruned):
     temp_df.columns = range(1, len(temp_df.columns) + 1)
     result_df = pd.concat([df_after_generation, temp_df], axis=1)
     return result_df
-
+'''
 
 def generate_candidate_itemsets_lk(df_pruned_l2):
     # df_after_generation_lk = pd.DataFrame()
@@ -243,3 +243,61 @@ def mine_frequent_itemsets(temp_df, min_sup):
         return temp_df
     else:
         return mine_frequent_itemsets(temp_df_after_generating, min_sup)
+
+
+def print_strong_rules():
+    for rule in strong_association_rules:
+        lhs = ', '.join(rule['lhs'])
+        rhs = ', '.join(rule['rhs'])
+        confidence = rule['confidence']
+        print(f"{lhs} -> {rhs} confidence = {confidence}")
+    return 'Done'
+
+
+def extract_unique_combinations():
+    seen_combinations = set()
+    for combination in all_combinations_list:
+        if len(combination) == 2 and len(combination[0]) == 1 and len(combination[1]) >= 1:
+            item_1, item_2 = combination[0][0], combination[1][0]
+            forward_combination = f"{item_1} -> {item_2}"
+            reverse_combination = f"{item_2} -> {item_1}"
+
+            if reverse_combination not in seen_combinations:
+                unique_combinations.append(combination)
+                seen_combinations.add(forward_combination)
+
+    # Print or use unique_combinations as needed
+    for combo in unique_combinations:
+        # print('combo')
+        print(combo)
+    # return unique_combinations
+
+
+def calculate_lift():
+    frequent_itemsets_df = pd.DataFrame.from_dict(frequent_itemsets, orient='index',
+                                                  columns=['frequent_itemsets']).reset_index()
+    frequent_itemsets_df.columns = ['frequent_itemsets', 'support_count']
+    for index, row in frequent_itemsets_df.iterrows():
+        temp_items = row['frequent_itemsets'].split(',')
+        freq_item_list[:] = temp_items
+        # temp_combinations = generate_combinations(freq_item_list)
+        # combinations_list[:] = temp_combinations
+        # all_combinations_list.extend(combinations_list)
+        # print('Dict')
+        # print(frequent_itemsets)
+        # print(unique_combinations)
+        for combination in unique_combinations:
+            lhs = combination[0]
+            rhs = combination[1]
+            print('rhs')
+            print(rhs)
+            print('str_rhs')
+            str_rhs = ','.join(rhs)
+            print(str_rhs)
+            support_count_lhs = get_support_count(','.join(lhs))
+            support_count_rhs = get_support_count(','.join(rhs))
+            support_count_key = get_support_count(row['frequent_itemsets'])
+
+            lift = support_count_key / (support_count_lhs * support_count_rhs)
+            print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift}")
+
