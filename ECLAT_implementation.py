@@ -1,6 +1,6 @@
 import pandas as pd
 from mlxtend.preprocessing import TransactionEncoder
-from itertools import combinations
+from itertools import combinations, chain
 
 association_rules = {}
 frequent_itemsets = {}
@@ -11,7 +11,9 @@ freq_item_list = []
 combinations_list = []
 strong_association_rules = []
 all_combinations_list = []
-unique_combinations = []
+
+
+# unique_combinations = []
 
 
 # unique_combinations = []
@@ -101,7 +103,7 @@ def generate_association_rules(min_confidence):
         freq_item_list[:] = temp_items
         temp_combinations = generate_combinations(freq_item_list)
         combinations_list[:] = temp_combinations
-        all_combinations_list.extend(combinations_list)
+        all_combinations_list.extend(combinations_list)  #(combination[0], combination[1] )
         for combination in combinations_list:
             lhs = sorted(combination[0])
             rhs = sorted(combination[1])
@@ -112,43 +114,16 @@ def generate_association_rules(min_confidence):
             reverse_rule = (tuple(rhs), tuple(lhs))
             original_rule = (tuple(lhs), tuple(rhs))
             original_rules_list.append(original_rule)
-            original_flattened_list = [item for sublist in original_rules_list for item in sublist]
-            print('original')
-            print(original_rule)
-            print('reversed')
-            print(reverse_rule)
+            #original_flattened_list = [item for sublist in original_rules_list for item in sublist]
             if rule_exists(reverse_rule) == False:
                 denominator = float(support_count_lhs * support_count_rhs)
                 lift = support_count_key / denominator
                 print(f"Rule: {lhs} -> {rhs} : Lift = {lift}")
+
             if confidence >= min_confidence:
                 strong_rule = {'lhs': lhs, 'confidence': confidence, 'rhs': combination[1]}
                 strong_association_rules.append(strong_rule)
-            #print(f"Rule: {combination[0]} -> {combination[1]} : Confidence = {confidence}")
-
-    '''
-    for key, value in items_list:
-        #items = items_list.split(',')
-        #print(items)
-        if len(key) > 1:
-            for i in range(1, len(key)):
-                for subset in itertools.combinations(key, i):
-                    # subset_str = ''.join(sorted(subset))
-                    # lhs = subset_str
-                    # rhs = ''.join(sorted(set(key) - set(subset)))
-                    subset_frozenset = frozenset(subset)
-                    lhs = subset_frozenset
-                    rhs = frozenset(key) - subset_frozenset
-
-                    print(lhs)
-                    print(rhs)
-                    # Assuming 'frequent_itemsets' is a dictionary containing support counts
-                    confidence = frequent_itemsets.get(key) / frequent_itemsets.get(lhs)
-                    ar_key = "{}->{}".format(lhs, rhs)
-                    association_rules[ar_key] = confidence
-                    if confidence >= min_confidence:
-                        strong_association_rules[ar_key] = confidence
-    '''
+            print(f"Rule: {combination[0]} -> {combination[1]} : Confidence = {confidence}")
 
 
 def generate_candidate_itemsets_l2(df_pruned):
@@ -165,8 +140,7 @@ def generate_candidate_itemsets_l2(df_pruned):
     df_after_generation['items'] = combinations_items
     for i in range(len(transactions_list)):
         for j in range(i + 1, len(transactions_list)):
-            result = [int(transactions_list[i][k]) & int(transactions_list[j][k]) for k in
-                      range(len(transactions_list[i]))]
+            result = [int(transactions_list[i][k]) & int(transactions_list[j][k]) for k in range(len(transactions_list[i]))]
             combinations_trans.append(result)
     temp_df = pd.DataFrame(combinations_trans)
     temp_df.columns = range(1, len(temp_df.columns) + 1)
@@ -182,11 +156,11 @@ def generate_candidate_itemsets_lk(df_pruned_l2):
     for item1 in result_list:
         for item2 in result_list:
             if item1 != item2:
-                substrings1 = item1[0].split(',')
+                substrings1 = item1[0].split(',') # A -> B   A,B   B,C
                 substrings2 = item2[0].split(',')
                 substring1 = substrings1[1]  # Substring after first comma in string1
                 substring2 = substrings2[-2]
-                intersection = set(substring1) & set(substring2)
+                intersection = set(substring1) & set(substring2)  ## find the midle part of the string
                 if len(intersection) == len(substring1):  # Ensure two elements match
                     combined_items = ','.join(sorted(set(substrings1 + substrings2)))
                     combinations_items.append(combined_items)
@@ -197,7 +171,6 @@ def generate_candidate_itemsets_lk(df_pruned_l2):
     temp_df = pd.DataFrame(combinations_trans)
     temp_df.columns = range(1, len(temp_df.columns) + 1)
     result_df = pd.concat([result_df, temp_df], axis=1)
-
     return result_df
 
 
@@ -287,33 +260,81 @@ def extract_unique_combinations():
         print(combo)
     # return unique_combinations
 
+'''
+'''
+def generate_unique_combinations(items):
+
+    for item in items:
+        if len(item) > 1:
+            all_unique_combinations = chain.from_iterable(combinations(item, r) for r in range(1, len(item)))
+
+            for combination in all_unique_combinations:
+                lhs = frozenset(combination)
+                rhs = frozenset(item - lhs)
+    return item_combinations
+
 
 
 def calculate_lift():
+    #unique_combinations = []
+    #indices = []
+    copy_all_combinations = all_combinations_list.copy()
     frequent_itemsets_df = pd.DataFrame.from_dict(frequent_itemsets, orient='index',
                                                   columns=['frequent_itemsets']).reset_index()
     frequent_itemsets_df.columns = ['frequent_itemsets', 'support_count']
+    # print(copy_all_combinations)
+    for item, support in frequent_itemsets.items():
+        #temp_items = row['frequent_itemsets'].split(',')
+        #freq_item_list[:] = temp_items
+        #for item in freq_item_list:
+        item_without_commas = tuple(x for x in item if x != ',')
+
+        if len(item_without_commas) > 1:
+            item_set = set(item_without_commas)
+            all_unique_combinations = chain.from_iterable(combinations(item_set, r) for r in range(1, len(item_set) + 1))
+            for combination in all_unique_combinations:
+                print(combination)
+            for combination in all_unique_combinations:
+                combination_without_commas = tuple(x for x in combination if x != ',')
+                lhs = frozenset(sorted(combination_without_commas))
+                rhs = frozenset(sorted(item_set - lhs))
+                support_count_lhs = get_support_count(','.join(lhs))
+                support_count_rhs = get_support_count(','.join(rhs))
+                #support_count_key = get_support_count(row['frequent_itemsets'])
+                lift = support / (support_count_lhs * support_count_rhs)
+                if lift > 1:
+                    print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift} : Positive Correlation")
+                elif lift < 1:
+                    print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift} : Negative Correlation")
+                else:
+                    print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift} : No Correlation")
+
+
+    for i in range(len(copy_all_combinations)):
+        current = copy_all_combinations[i]
+        for j in range(i + 1, len(copy_all_combinations)):
+            next_item = copy_all_combinations[j]
+            #is_unique = True
+            original_current = (sorted(current[0]), sorted(current[1]))
+            reverse_next = (sorted(next_item[1]), sorted(next_item[0]))  # Create a reverse tuple
+            if reverse_next not in unique_combinations and original_current not in unique_combinations:
+                unique_combinations.append(current)
+                break
+    
+    print(unique_combinations)
+    
     for index, row in frequent_itemsets_df.iterrows():
-        temp_items = row['frequent_itemsets'].split(',')
-        freq_item_list[:] = temp_items
-        # temp_combinations = generate_combinations(freq_item_list)
-        # combinations_list[:] = temp_combinations
-        # all_combinations_list.extend(combinations_list)
-        # print('Dict')
-        # print(frequent_itemsets)
-        # print(unique_combinations)
         for combination in unique_combinations:
-            lhs = combination[0]
-            rhs = combination[1]
-            print('rhs')
-            print(rhs)
-            print('str_rhs')
-            str_rhs = ','.join(rhs)
-            print(str_rhs)
+            lhs = sorted(combination[0])
+            rhs = sorted(combination[1])
             support_count_lhs = get_support_count(','.join(lhs))
             support_count_rhs = get_support_count(','.join(rhs))
             support_count_key = get_support_count(row['frequent_itemsets'])
-
             lift = support_count_key / (support_count_lhs * support_count_rhs)
-            print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift}")
-    '''
+            if lift > 1:
+                print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift} : Positive Correlation")
+            elif lift < 1:
+                print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift} : Negative Correlation")
+            else:
+                print(f"Rule: {combination[0]} -> {combination[1]} : Lift = {lift} : No Correlation")
+'''
